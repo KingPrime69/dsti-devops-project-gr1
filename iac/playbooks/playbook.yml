@@ -1,0 +1,132 @@
+---
+- name: Provision the FastAPI application
+  hosts: application
+  become: true
+
+  vars:
+    app_dir: /vagrant/userapi
+    venv_dir: /home/vagrant/.venvs/userapi
+    app_port: 8000
+
+    db_host: 127.0.0.1
+    db_port: 5432
+    db_user: userapi
+    db_name: userapi
+    db_password: "3kzj6XW0aHmF6jJJ57mQ6LmLC9bg7C"
+
+  tasks:
+    - name: Install Python and PostgreSQL
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - postgresql
+          - postgresql-contrib
+          - acl
+        state: present
+        update_cache: true
+
+    - name: Enable and start PostgreSQL
+      ansible.builtin.systemd:
+        name: postgresql
+        enabled: true
+        state: started
+
+    - name: Create the PostgreSQL user and database
+      become_user: postgres
+      ansible.builtin.shell: |
+        psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='{{ db_user }}'" |
+          grep -q 1 ||
+          psql -c "CREATE USER {{ db_user }} WITH PASSWORD '{{ db_password }}'"
+
+        psql -tAc "SELECT 1 FROM pg_database WHERE datname='{{ db_name }}'" |
+          grep -q 1 ||
+          createdb --owner={{ db_user }} {{ db_name }}
+      args:
+        executable: /bin/bash
+      changed_when: false
+      no_log: true
+
+    - name: Check requirements.txt
+      ansible.builtin.stat:
+        path: "{{ app_dir }}/requirements.txt"
+      register: requirements_file
+
+    - name: Stop if requirements.txt is missing
+      ansible.builtin.fail:
+        msg: "Missing file: {{ app_dir }}/requirements.txt"
+      when: not requirements_file.stat.exists
+
+    - name: Install the Python dependencies
+      become: false
+      ansible.builtin.pip:
+        requirements: "{{ app_dir }}/requirements.txt"
+        virtualenv: "{{ venv_dir }}"
+        virtualenv_command: python3 -m venv
+
+    - name: Create the User API service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/userapi.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=DSTI FastAPI User API
+          After=network.target postgresql.service
+          Requires=postgresql.service
+
+          [Service]
+          Type=simple
+          User=vagrant
+          Group=vagrant
+          WorkingDirectory={{ app_dir }}
+
+          Environment=DB_HOST={{ db_host }}
+          Environment=DB_PORT={{ db_port }}
+          Environment=DB_USER={{ db_user }}
+          Environment=DB_PASSWORD={{ db_password }}
+          Environment=DB_NAME={{ db_name }}
+          Environment=APP_PORT={{ app_port }}
+
+          ExecStart={{ venv_dir }}/bin/uvicorn main:app --host 0.0.0.0 --port {{ app_port }}
+
+          Restart=always
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+      no_log: true
+
+    - name: Enable and restart the User API
+      ansible.builtin.systemd:
+        name: userapi
+        enabled: true
+        state: restarted
+        daemon_reload: true
+
+    - name: Wait for the application port
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ app_port }}"
+        delay: 2
+        timeout: 60
+
+    - name: Check the application health endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: health_check
+      retries: 10
+      delay: 3
+      until: health_check.status == 200
+
+    - name: Display the health-check result
+      ansible.builtin.debug:
+        msg: >-
+          Health check succeeded:
+          HTTP {{ health_check.status }},
+          response={{ health_check.content }}
