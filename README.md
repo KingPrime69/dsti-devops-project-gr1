@@ -25,3 +25,35 @@ Note: these configure only the client side. The `postgres` image uses its own `P
 
 - Lyna - infrastructure, Docker, Kubernetes
 - Quentin - application, tests, CI
+
+
+## Docker image
+
+The User API image is publicly available on Docker Hub:
+
+https://hub.docker.com/r/lynamouhoubi/userapi
+
+### Pull the image
+
+```bash
+docker pull lynamouhoubi/userapi:1.0
+```
+
+### Run the image
+
+The application listens on port `8000` and requires PostgreSQL.
+
+Required environment variables:
+
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `APP_PORT`
+
+Health-check endpoint:
+
+```text
+GET /health
+```
