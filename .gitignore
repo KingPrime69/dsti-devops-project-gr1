@@ -2,9 +2,12 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+userapi/.venv-vagrant/
 .env
 .pytest_cache/
 .vagrant/
+*.box
+*.retry
 *.log
 .idea/
 .vscode/
