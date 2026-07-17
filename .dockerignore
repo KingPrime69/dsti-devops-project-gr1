@@ -1,0 +1,45 @@
+# Git
+.git/
+.github/
+.gitignore
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+**/.venv/
+**/venv/
+userapi/.venv-vagrant/
+
+# Secrets
+.env
+*.env
+**/.env
+
+# Vagrant et Ansible
+.vagrant/
+Vagrantfile
+ansible/
+iac/
+*.box
+*.retry
+
+# Kubernetes et documentation
+k8s/
+image/
+README.md
+
+# Tests
+userapi/tests/
+**/tests/
+
+# IDE et système
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+**/*.log
