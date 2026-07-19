@@ -10,7 +10,7 @@ class UserCreate(UserBase):
     pass
 
 class UserUpdate(BaseModel):
-    username: str | None = Field(default=None, min_length=3, max_lenght=50)
+    username: str | None = Field(default=None, min_length=3, max_length=50)
     email: EmailStr | None = None
 
 class UserOut(UserBase):
